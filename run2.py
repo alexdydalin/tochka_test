@@ -12,8 +12,7 @@ def solve(edges: list[tuple[str, str]]) -> list[str]:
         список отключаемых коридоров в формате "Шлюз-узел"
     """
 
-
-    # Создаём граф как словарь множеств, у каждого узла есть список соседей
+    # создаём граф как словарь множеств, у каждого узла есть список соседей
     graph = defaultdict(set)
     for n1, n2 in edges:
         graph[n1].add(n2)
@@ -75,64 +74,35 @@ def solve(edges: list[tuple[str, str]]) -> list[str]:
         if nearest_gateway is None:
             break
 
-        # находим путь до ближайшего шлюза
-        previous = {}
-        visited = {virus_position}
-        queue = deque([virus_position])
-        found_gateway = False
+        # находим все возможные узлы, соединённые с выбранным шлюзом
+        connected_nodes = sorted([node for node in graph[nearest_gateway] if node.islower()])
 
-        while queue and not found_gateway:
-            current = queue.popleft()
-            for neighbor in sorted(graph[current]):
-                if neighbor not in visited:
-                    visited.add(neighbor)
-                    previous[neighbor] = current
-                    queue.append(neighbor)
-                    if neighbor == nearest_gateway:
-                        found_gateway = True
-                        break
-
-        # восстанавливаем путь (от вируса до шлюза)
-        path = []
-        node = nearest_gateway
-        while node != virus_position:
-            path.append(node)
-            node = previous[node]
-        path.append(virus_position)
-        path.reverse() # это уже путь от вируса к шлюзу
-
-        # проверка соединен ли вирус со шлюзом напрямую
-        direct_connection = None
-        for gateway in gateways:
-            if virus_position in graph[gateway]:
-                direct_connection = (gateway, virus_position)
-                break
-
-        if direct_connection:
-            # если вирус прямо у шлюза то соединение обрубается
-            gateway, node = direct_connection
-            graph[gateway].remove(node)
-            graph[node].remove(gateway)
-            actions.append(f"{gateway}-{node}")
-        else:
-            # если вирус не у шлюза то отключаем последнюю связь в найденном пути
-            if len(path) >= 2:
-                node_before_gateway = path[-2]  # узел перед шлюзом
-                gateway = path[-1]
-                graph[gateway].remove(node_before_gateway)
-                graph[node_before_gateway].remove(gateway)
-                actions.append(f"{gateway}-{node_before_gateway}")
+        if connected_nodes:
+            # выбираем лексикографически минимальный узел для отключения
+            node_to_disconnect = connected_nodes[0]
+            graph[nearest_gateway].remove(node_to_disconnect)
+            graph[node_to_disconnect].remove(nearest_gateway)
+            actions.append(f"{nearest_gateway}-{node_to_disconnect}")
 
         # после нашего хода вирус делает один шаг вперёд
         distances = bfs(virus_position)
-        if nearest_gateway not in distances:
+        reachable_gateways = [g for g in gateways if g in distances]
+        if not reachable_gateways:
             # если пути нет то вирус остаётся на месте
             continue
 
-        # вирус двигается на один узел ближе к шлюзу
+        # выбираем ближайший шлюз из оставшихся
+        nearest_gateway_distance = float('inf')
+        nearest_gateway_for_move = None
+        for g in reachable_gateways:
+            if distances[g] < nearest_gateway_distance or (distances[g] == nearest_gateway_distance and g < nearest_gateway_for_move):
+                nearest_gateway_distance = distances[g]
+                nearest_gateway_for_move = g
+
+        # вирус двигается на один узел ближе к ближайшему шлюзу
         next_position = None
         for neighbor in sorted(graph[virus_position]):
-            if neighbor in distances and distances[neighbor] == distances[nearest_gateway] - 1:
+            if neighbor in distances and distances[neighbor] == distances[nearest_gateway_for_move] - 1:
                 next_position = neighbor
                 break
         if next_position:
@@ -146,8 +116,8 @@ def main():
     for line in sys.stdin:
         line = line.strip()
         if line:
-            n1, sep, n2 = line.partition('-')
-            edges.append((n1, n2))
+            node1, separator, node2 = line.partition('-')
+            edges.append((node1, node2))
 
     result = solve(edges)
     for r in result:
