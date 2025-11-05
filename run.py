@@ -168,7 +168,6 @@ def solve(lines: list[str]) -> int:
     return 0
 
 
-
 def main():
     # Чтение входных данных
     lines = []
