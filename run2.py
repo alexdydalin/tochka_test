@@ -12,6 +12,7 @@ def solve(edges: list[tuple[str, str]]) -> list[str]:
         список отключаемых коридоров в формате "Шлюз-узел"
     """
 
+
     # Создаём граф как словарь множеств, у каждого узла есть список соседей
     graph = defaultdict(set)
     for n1, n2 in edges:
